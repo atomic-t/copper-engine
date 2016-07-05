@@ -31,13 +31,19 @@ import org.copperengine.core.batcher.BatchCommand;
 import org.copperengine.core.db.utility.JdbcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * MySQL implementation of the {@link DatabaseDialect} interface.
  *
  * @author austermann
  */
 public class MySqlDialect extends AbstractSqlDialect {
+
     private static final Logger logger = LoggerFactory.getLogger(MySqlDialect.class);
+
+    public MySqlDialect() {
+        super(true, false);
+    }
 
     @Override
     protected PreparedStatement createUpdateStateStmt(final Connection c, final int max) throws SQLException {
@@ -50,7 +56,7 @@ public class MySqlDialect extends AbstractSqlDialect {
 
     @Override
     protected PreparedStatement createDequeueStmt(final Connection c, final String ppoolId, final int max) throws SQLException {
-        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ? order by priority, last_mod_ts) LIMIT 0," + max);
+        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ?  and engine_id is NULL order by priority, last_mod_ts) LIMIT 0," + max);
         dequeueStmt.setString(1, ppoolId);
         return dequeueStmt;
     }
@@ -107,16 +113,12 @@ public class MySqlDialect extends AbstractSqlDialect {
      * Note: For MySQL the advisory lock only applies to the current connection, if the connection terminates, it will
      * release the lock automatically.
      * If you try to lock multiple times on the same lockContext, for the same connection, you need to release multiple
-     * times, it won't deadlock since version 5.7.5, please consult:
-     * http://dev.mysql.com/doc/refman/5.7/en/miscellaneous-functions.html#function_get-lock
+     * times, it won't deadlock since version 5.7.5, please consult: {@linkplain http
+     * ://dev.mysql.com/doc/refman/5.7/en/miscellaneous-functions.html#function_get-lock}
      */
     @Override
-    protected void lock(Connection con, final String lockContext) throws SQLException {
-        if (!multiEngineMode) {
-            return;
-        }
-        if (logger.isDebugEnabled())
-            logger.debug("Trying to acquire db lock for '" + lockContext);
+    protected void doLock(Connection con, final String lockContext) throws SQLException {
+        logger.debug("Trying to acquire db lock for '{}'", lockContext);
         PreparedStatement stmt = con.prepareStatement("select get_lock(?,?)");
         stmt.setString(1, lockContext);
         stmt.setInt(2, ACQUIRE_BLOCKING_WAIT_SEC);
@@ -145,12 +147,8 @@ public class MySqlDialect extends AbstractSqlDialect {
     }
 
     @Override
-    protected void releaseLock(Connection con, final String lockContext) {
-        if (!multiEngineMode) {
-            return;
-        }
-        if (logger.isDebugEnabled())
-            logger.debug("Trying to release db lock for '" + lockContext);
+    protected void doReleaseLock(Connection con, final String lockContext) {
+        logger.debug("Trying to release db lock for '{}'", lockContext);
         PreparedStatement stmt = null;
         try {
             stmt = con.prepareStatement("select release_lock(?)");

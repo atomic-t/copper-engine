@@ -83,7 +83,7 @@ public class H2Dialect extends AbstractSqlDialect {
 
     @Override
     protected PreparedStatement createDequeueStmt(final Connection c, final String ppoolId, final int maxRows) throws SQLException {
-        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ? order by priority, last_mod_ts) LIMIT " + maxRows);
+        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ? and engine_id is NULL order by priority, last_mod_ts) LIMIT " + maxRows);
         dequeueStmt.setString(1, ppoolId);
         return dequeueStmt;
     }
@@ -182,24 +182,6 @@ public class H2Dialect extends AbstractSqlDialect {
             queryStmt = c.prepareStatement("select id,state,priority,ppool_id,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where state in (0,1,2) LIMIT " + max);
         }
         return queryStmt;
-    }
-
-    @Override
-    protected void lock(Connection con, String lockContext) throws SQLException {
-        if (!multiEngineMode) {
-            return;
-        }
-        logger.warn("H2Dialet doesn't support multiple engine yet");
-        // TODO implement lock for H2Dialet
-    }
-
-    @Override
-    protected void releaseLock(Connection con, String lockContext) {
-        if (!multiEngineMode) {
-            return;
-        }
-        // TODO
-
     }
 
 }

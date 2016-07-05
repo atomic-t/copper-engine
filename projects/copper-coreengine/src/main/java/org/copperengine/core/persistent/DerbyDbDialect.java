@@ -76,7 +76,7 @@ public class DerbyDbDialect extends AbstractSqlDialect {
 
     @Override
     protected PreparedStatement createDequeueStmt(final Connection c, final String ppoolId, final int maxRows) throws SQLException {
-        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ? order by priority, last_mod_ts) FETCH FIRST " + maxRows + " ROWS ONLY");
+        PreparedStatement dequeueStmt = c.prepareStatement("select id,priority,data,object_state,creation_ts from COP_WORKFLOW_INSTANCE where id in (select WORKFLOW_INSTANCE_ID from COP_QUEUE where ppool_id = ? and engine_id is NULL order by priority, last_mod_ts) FETCH FIRST " + maxRows + " ROWS ONLY");
         dequeueStmt.setString(1, ppoolId);
         return dequeueStmt;
     }
@@ -206,20 +206,4 @@ public class DerbyDbDialect extends AbstractSqlDialect {
         return queryStmt;
     }
 
-    @Override
-    protected void lock(Connection con, String lockContext) throws SQLException {
-        if (!multiEngineMode) {
-            return;
-        }
-        logger.warn("DerbyDbDialect doesn't support multiple engine yet");
-        // TODO implement lock for DerbyDbDialet
-    }
-
-    @Override
-    protected void releaseLock(Connection con, String lockContext) {
-        if (!multiEngineMode) {
-            return;
-        }
-        // TODO
-    }
 }
